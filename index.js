@@ -5,7 +5,15 @@ const client = new google.auth.JWT(keys.client_email, null, keys.private_key, [
     'https://www.googleapis.com/auth/spreadsheets',
 ]);
 
-const personData = {level: 'junior', stack: 'react'};
+
+const personData = {
+    stack: 'JS',
+    percents: {
+        junior: [60, 20, 20],
+        middle: [30, 40, 30],
+        senior: [20, 20, 60]
+    }
+};
 
 client.authorize(async (error, tokens) => {
     if (error) {
@@ -28,7 +36,6 @@ async function gsrun(cl) {
     const startModuleIndex = [];
     const qData = {}
 
-
     const moduleTypeArr = () => {
         for (let i = 1; i < allCells.length; i++) {
             allCells[i][0] && moduleNamesArr.push(allCells[i][0]);
@@ -36,8 +43,6 @@ async function gsrun(cl) {
                 allCells[i].includes(moduleNamesArr[j]) && startModuleIndex.push({[moduleNamesArr[j]]: allCells.indexOf(allCells[i])});
             }
         }
-        console.log('moduleNamesArr:', moduleNamesArr)
-        console.log('startModuleIndex:', startModuleIndex)
     }
     moduleTypeArr();
 
@@ -48,38 +53,46 @@ async function gsrun(cl) {
                 qData[moduleNamesArr[i]][j].shift()
             }
         }
-        console.log(qData)
+        console.log('qData:', qData)
     }
     questionsByModuleName()
 
-    const filteredData = {};
 
-    const getQuestionsByLevel = (level) => {
-        const arr = []
+    const getQuestionsByLevel = (level, stack, percent) => {
+        const filteredData = {};
+        const randomElementsIndexArr = [];
 
         for(let j = 0; j < moduleNamesArr.length; j++){
             for(let i = 0; i < qData[moduleNamesArr[j]].length; i++){
-
-                filteredData[moduleNamesArr[j]] ? filteredData[moduleNamesArr[j]].push(qData[moduleNamesArr[j]][i][level]) : filteredData[moduleNamesArr[j]] = [];
+                filteredData[moduleNamesArr[j]] ? filteredData[moduleNamesArr[j]].push(qData[moduleNamesArr[j]][i][level]) : filteredData[moduleNamesArr[j]] = [qData[moduleNamesArr[j]][i][level]];
             }
         }
-        console.log('filteredData:', filteredData['JS'])
-        const qCountByStack = filteredData['JS'].length * 60 / 100;
+        // console.log('all questions by stack level:', filteredData)
 
-        for(let i = 0; i < filteredData['JS'].length; i++){
-            arr.push(i)
+        let currentData = filteredData[stack];
+        if(stack === 'React Native') currentData = [...filteredData[stack], ...filteredData['React']]
+
+
+        const qCountByStack = Math.floor(currentData.length * percent / 100);
+
+        currentData.forEach((_, i) => randomElementsIndexArr.push(i))
+
+        let randomIndex = () => Math.random() * randomElementsIndexArr.length
+
+        for(let i = 0; i < currentData.length - qCountByStack; i++){
+            randomElementsIndexArr.splice(randomIndex(), 1);
         }
 
-        let randomIndex = () => Math.floor(Math.random() * arr.length)
-        for(let i = 0; i < qCountByStack; i++){
-            arr.splice(randomIndex(), 1);
+        while(randomElementsIndexArr.length < 3){
+            const additionalIndex = Math.round(Math.random() * currentData.length)
+            randomElementsIndexArr.push(additionalIndex)
+            randomElementsIndexArr.reduce((unique, item) => unique.includes(item) ? unique : [...unique, item], [])
         }
-        const newArr = arr.map(i => filteredData['JS'][i])
-        return { newArr }
+
+        return randomElementsIndexArr.map(i => currentData[i])
     }
 
-    const junLvl = getQuestionsByLevel(0)
-    const midLvl = getQuestionsByLevel(1)
-    // console.log('junLvl:', junLvl)
-    console.log('midLvl:', midLvl)
+    const getAllQuestionsByStackLvl = (personData) => [0,1,2].reduce((acc, i) => [...acc, ...getQuestionsByLevel(i, personData.stack, personData.percents.junior[i])], [])
+
+    console.log(getAllQuestionsByStackLvl(personData))
 }
